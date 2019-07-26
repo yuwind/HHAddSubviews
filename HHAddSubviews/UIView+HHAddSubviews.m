@@ -8,6 +8,7 @@
 
 #import "UIView+HHAddSubviews.h"
 #import <objc/runtime.h>
+#import "UIView+HHLayout.h"
 
 
 #ifndef KViewAddress
@@ -52,43 +53,46 @@ static char * const textViewMaxCharKey      = "textViewMaxCharKey";
 
 @implementation UIView (HHAddSubviews)
 
+@dynamic ownerController;
+
+- (UIViewController *)ownerController
+{
+    if ([[self nextResponder] isKindOfClass:[UIViewController class]]) {
+        return (UIViewController *)[self nextResponder];
+    }
+    if (![self superview]) return nil;
+    for (UIView *next = [self superview]; next; next = next.superview) {
+        UIResponder *nextResponder = [next nextResponder];
+        if ([nextResponder isKindOfClass:[UIViewController class]])
+        {
+            return (UIViewController *)nextResponder;
+        }
+    }
+    return nil;
+}
+
 #pragma mark -- 快速添加视图
 
 - (UIView *)hh_addView:(void(^)(UIView *))view
 {
-    return [self hh_addView:view constraints:nil];
-}
-- (UIView *)hh_addView:(void(^)(UIView *))view constraints:(void(^)(MASConstraintMaker *make))block
-{
     UIView *view_ = [UIView new];
     [self addSubview:view_];
     if(view)view(view_);
-    if (block)[view_ mas_makeConstraints:block];
     return view_;
 }
 - (UILabel *)hh_addLabel:(void (^)(UILabel *))label
 {
-    return [self hh_addLabel:label constraints:nil];
-}
-- (UILabel *)hh_addLabel:(void (^)(UILabel *))label constraints:(void (^)(MASConstraintMaker *))block
-{
     UILabel *label_ = [UILabel new];
     [self addSubview:label_];
     if(label)label(label_);
-    if (block)[label_ mas_makeConstraints:block];
     return label_;
 }
 
 - (UIImageView *)hh_addImageView:(void(^)(UIImageView *))imageView
 {
-    return [self hh_addImageView:imageView constraints:nil];
-}
-- (UIImageView *)hh_addImageView:(void(^)(UIImageView *))imageView constraints:(void(^)(MASConstraintMaker *))block
-{
     UIImageView *imageView_ = [UIImageView new];
     [self addSubview:imageView_];
     if(imageView)imageView(imageView_);
-    if(block)[imageView_ mas_makeConstraints:block];
     return imageView_;
 }
 
@@ -96,36 +100,21 @@ static char * const textViewMaxCharKey      = "textViewMaxCharKey";
 {
     return [self hh_addButton:button action:nil];
 }
-- (UIButton *)hh_addButton:(void (^)(UIButton *))button constraints:(void (^)(MASConstraintMaker *))block
-{
-    return [self hh_addButton:button action:nil constraints:block];
-}
 - (UIButton *)hh_addButton:(void(^)(UIButton *))button action:(void (^)(UIButton *))action
 {
     return [self hh_addButton:button events:UIControlEventTouchUpInside action:action];
 }
-- (UIButton *)hh_addButton:(void(^)(UIButton *))button action:(void (^)(UIButton *))action constraints:(void(^)(MASConstraintMaker *))block
-{
-    return [self hh_addButton:button events:UIControlEventTouchUpInside action:action constraints:block];
-}
 - (UIButton *)hh_addButton:(void (^)(UIButton *))button events:(UIControlEvents)controlEvents action:(void (^)(UIButton *))action
 {
-    return [self hh_addButton:button events:controlEvents action:action constraints:nil];
-}
-- (UIButton *)hh_addButton:(void(^)(UIButton *))button events:(UIControlEvents)controlEvents action:(void (^)(UIButton *))action constraints:(void(^)(MASConstraintMaker *))block
-{
-    UIButton *button_ = [UIButton new];
+    UIButton *button_ = [UIButton buttonWithType:UIButtonTypeCustom];
     [self addSubview:button_];
     if(button)button(button_);
     if (action) {
         if (!self.actionDict) {
             self.actionDict = [NSMutableDictionary dictionary];
         }
-        [self.actionDict setObject:action forKey:KViewAddress(button_)];
+        [self.actionDict setValue:action forKey:KViewAddress(button_)];
         [button_ addTarget:self action:@selector(hh_buttonClicked:) forControlEvents:controlEvents];
-    }
-    if (block) {
-        [button_ mas_makeConstraints:block];
     }
     return button_;
 }
@@ -138,13 +127,9 @@ static char * const textViewMaxCharKey      = "textViewMaxCharKey";
 }
 - (UISwitch *)hh_addSwitch:(void(^)(UISwitch *))Switch
 {
-    return [self hh_addSwitch:Switch constraints:nil];
+    return [self hh_addSwitch:Switch action:nil];
 }
-- (UISwitch *)hh_addSwitch:(void(^)(UISwitch *))Switch constraints:(void(^)(MASConstraintMaker *))block
-{
-    return [self hh_addSwitch:Switch action:nil constraints:block];
-}
-- (UISwitch *)hh_addSwitch:(void(^)(UISwitch *))Switch action:(void (^)(UISwitch *))action constraints:(void(^)(MASConstraintMaker *))block
+- (UISwitch *)hh_addSwitch:(void(^)(UISwitch *))Switch action:(void (^)(UISwitch *))action
 {
     UISwitch *switch_ = [UISwitch new];
     [self addSubview:switch_];
@@ -153,11 +138,8 @@ static char * const textViewMaxCharKey      = "textViewMaxCharKey";
         if (!self.actionDict) {
             self.actionDict = [NSMutableDictionary dictionary];
         }
-        [self.actionDict setObject:action forKey:KViewAddress(switch_)];
+        [self.actionDict setValue:action forKey:KViewAddress(switch_)];
         [switch_ addTarget:self action:@selector(hh_switchClickedAction:) forControlEvents:UIControlEventValueChanged];
-    }
-    if (block) {
-        [switch_ mas_makeConstraints:block];
     }
     return switch_;
 }
@@ -174,10 +156,6 @@ static char * const textViewMaxCharKey      = "textViewMaxCharKey";
 }
 - (UITextField *)hh_addTextField:(void (^)(UITextField *))textField action:(void (^)(UITextField *,BOOL))action
 {
-    return [self hh_addTextField:textField action:action constraints:nil];
-}
-- (UITextField *)hh_addTextField:(void (^)(UITextField *))textField action:(void (^)(UITextField *, BOOL))action constraints:(void (^)(MASConstraintMaker *))block
-{
     UITextField *textField_ = [UITextField new];
     [self addSubview:textField_];
     if(textField)textField(textField_);
@@ -186,11 +164,8 @@ static char * const textViewMaxCharKey      = "textViewMaxCharKey";
         if (!self.actionDict) {
             self.actionDict = [NSMutableDictionary dictionary];
         }
-        [self.actionDict setObject:action forKey:KViewAddress(textField_)];
+        [self.actionDict setValue:action forKey:KViewAddress(textField_)];
         [textField_ addTarget:self action:@selector(hh_textFieldChangedAction:) forControlEvents:UIControlEventEditingChanged];
-    }
-    if (block) {
-        [textField_ mas_makeConstraints:block];
     }
     return textField_;
 }
@@ -234,10 +209,6 @@ static char * const textViewMaxCharKey      = "textViewMaxCharKey";
 }
 - (UITextView *)hh_addTextView:(void (^)(UITextView *))textView action:(void (^)(UITextView *, BOOL))action
 {
-    return [self hh_addTextView:textView action:action constraints:nil];
-}
-- (UITextView *)hh_addTextView:(void (^)(UITextView *))textView action:(void (^)(UITextView *, BOOL))action constraints:(void (^)(MASConstraintMaker *))block
-{
     UITextView *textView_ = [UITextView new];
     [self addSubview:textView_];
     if (action) {
@@ -245,13 +216,10 @@ static char * const textViewMaxCharKey      = "textViewMaxCharKey";
         if (!self.actionDict) {
             self.actionDict = [NSMutableDictionary dictionary];
         }
-        [self.actionDict setObject:action forKey:KViewAddress(textView_)];
+        [self.actionDict setValue:action forKey:KViewAddress(textView_)];
         textView_.delegate = self;
     }
     if(textView)textView(textView_);
-    if (block) {
-        [textView_ mas_makeConstraints:block];
-    }
     return textView_;
 }
 
@@ -264,7 +232,7 @@ static char * const textViewMaxCharKey      = "textViewMaxCharKey";
     void(^block)(UITextView *,BOOL) = [self.actionDict objectForKey:KViewAddress(textView)];
     
     if (block) {
-       
+        
         BOOL isOverMax = NO;
         if (textView.maxCharacters) {
             if (textView.text.length > textView.maxCharacters) {
@@ -276,15 +244,56 @@ static char * const textViewMaxCharKey      = "textViewMaxCharKey";
         block(textView,isOverMax);
     }
 }
+- (void)hh_addGestureType:(HHGestureType)type gesture:(void (^)(UIGestureRecognizer *))gesture action:(void (^)(UIGestureRecognizer *gesture))block
+{
+    UIGestureRecognizer *gestureRec = nil;
+    switch (type) {
+        case HHGestureTypeTap:
+            gestureRec = [[UITapGestureRecognizer alloc]initWithTarget:self action:@selector(hh_gestureRecognizerDidChanged:)];
+            break;
+        case HHGestureTypePan:
+            gestureRec = [[UIPanGestureRecognizer alloc]initWithTarget:self action:@selector(hh_gestureRecognizerDidChanged:)];
+            break;
+        case HHGestureTypeSwipe:
+            gestureRec = [[UISwipeGestureRecognizer alloc]initWithTarget:self action:@selector(hh_gestureRecognizerDidChanged:)];
+            break;
+        case HHGestureTypePinch:
+            gestureRec = [[UIPinchGestureRecognizer alloc]initWithTarget:self action:@selector(hh_gestureRecognizerDidChanged:)];
+            break;
+        case HHGestureTypeRotation:
+            gestureRec = [[UIRotationGestureRecognizer alloc]initWithTarget:self action:@selector(hh_gestureRecognizerDidChanged:)];
+            break;
+        case HHGestureTypeLongPress:
+            gestureRec = [[UILongPressGestureRecognizer alloc]initWithTarget:self action:@selector(hh_gestureRecognizerDidChanged:)];
+            break;
+        default:
+            break;
+    }
+    [self addGestureRecognizer:gestureRec];
+    if (gesture) {
+        gesture(gestureRec);
+    }
+    if (!self.actionDict) {
+        self.actionDict = [NSMutableDictionary dictionary];
+    }
+    [self.actionDict setValue:block forKey:KViewAddress(gestureRec)];
+}
+- (void)hh_gestureRecognizerDidChanged:(UIGestureRecognizer *)gesture
+{
+    void (^block)(UIGestureRecognizer *) = [self.actionDict objectForKey:KViewAddress(gesture)];
+    if (block) {
+        block(gesture);
+    }
+}
 
-- (void)addBlockEvents:(UIControlEvents)controlEvents action:(void (^)(id sender))block
+- (void)hh_addBlockEvents:(UIControlEvents)controlEvents action:(void (^)(id sender))block
 {
     if (![self isKindOfClass:[UIControl class]]) return;
     if (block) {
         if (!self.actionDict) {
             self.actionDict = [NSMutableDictionary dictionary];
         }
-        [self.actionDict setObject:block forKey:KViewAddress(self)];
+        [self.actionDict setValue:block forKey:KViewAddress(self)];
         UIControl *control = (UIControl *)self;
         [control addTarget:self action:@selector(hh_controlClickedAction:) forControlEvents:controlEvents];
     }
@@ -307,5 +316,65 @@ static char * const textViewMaxCharKey      = "textViewMaxCharKey";
     return objc_getAssociatedObject(self, buttonDictionaryKey);
 }
 
+- (void)hh_arrangeSubviews:(HHArrangeStyle)style
+{
+    [self hh_arrangeSubviews:self.subviews inset:UIEdgeInsetsZero space:0 style:style];
+}
+
+- (void)hh_arrangeSubviews:(NSArray *)subViews inset:(UIEdgeInsets)inset space:(CGFloat)space style:(HHArrangeStyle)style
+{
+    UIView *preView = nil;
+    if (style == HHArrangeHorizonal) {
+        for (int i = 0; i<self.subviews.count; i++) {
+            UIView *subView = self.subviews[i];
+            if (i == 0) { subView.left_.top_.bott_.constList(@(inset.left),@(inset.top),@(-inset.bottom),nil).on_();
+            }
+            if (i == (self.subviews.count-1)){
+                if (preView) { subView.left_.top_.bott_.widt_.equalTo(preView.righ_).offset_(space).on_();
+                    subView.righ_.constant(-inset.right).on_();
+                    self.subviews[0].widt_.equalTo(subView).on_();
+                }else{
+                    subView.righ_.constant(-inset.right).on_();
+                }
+            }else if (preView) {
+                subView.left_.top_.bott_.widt_.equalTo(preView.righ_).offset_(space).on_();
+            }
+            preView = subView;
+        }
+    }else if (style == HHArrangeVertical){
+        for (int i = 0; i<self.subviews.count; i++) {
+            UIView *subView = self.subviews[i];
+            if (i == 0) { subView.left_.top_.righ_.constList(@(inset.left),@(inset.top),@(-inset.right),nil).on_();
+            }
+            if (i == (self.subviews.count-1)){
+                if (preView) {
+                    subView.top_.left_.righ_.heit_.equalTo(preView.bott_).offset_(space).on_();
+                    subView.bott_.constant(-inset.bottom).on_();
+                    self.subviews[0].heit_.equalTo(subView).on_();
+                }else{
+                    subView.bott_.constant(-inset.right).on_();
+                }
+            }else if (preView) { subView.top_.left_.righ_.heit_.equalTo(preView.bott_).offset_(space).on_();
+            }
+            preView = subView;
+        }
+    }
+}
+
+- (void)hh_arrangeSubViews:(NSArray *)array totalWidth:(CGFloat)totalWidth itemHeight:(CGFloat)itemHeight inset:(UIEdgeInsets)inset lineCount:(int)lineCount lineSpace:(CGFloat)lineSpace margin:(CGFloat)margin
+{
+    CGFloat itemWidth = (totalWidth-inset.left-inset.right-(lineCount-1)*lineSpace)/lineCount;
+    for (int i = 0; i<array.count; i++) {
+        int row = i/lineCount;
+        int column = i%lineCount;
+        CGFloat xPosition = inset.left+column*(itemWidth+lineSpace);
+        CGFloat yPosition = inset.top+row*(itemHeight+margin);
+        UIView *view = array[i];
+        view.topLeft_(CGRectMake(xPosition, yPosition, itemWidth, itemHeight));
+        if (i==array.count-1) {
+            view.bott_.constant(-inset.bottom).on_();
+        }
+    }
+}
 
 @end
